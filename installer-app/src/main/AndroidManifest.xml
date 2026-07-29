@@ -9,10 +9,12 @@
 
     <!-- Desde o Android 11, um app só "enxerga" outro pacote instalado via
          PackageManager se declarar isso aqui (filtro de visibilidade de
-         pacotes). Sem isso, setInstallerPackageName() trata o alvo como
-         inexistente mesmo já instalado, e falha com "Unknown target package". -->
+         pacotes). O test-auto-app fica aqui por precaução; o gearhead
+         (Android Auto) é necessário pro botão "Abrir Android Auto" conseguir
+         achar o launch intent dele. -->
     <queries>
         <package android:name="com.autoplaygm2.testautoapp" />
+        <package android:name="com.google.android.projection.gearhead" />
     </queries>
 
     <application

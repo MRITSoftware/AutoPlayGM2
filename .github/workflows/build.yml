@@ -31,6 +31,16 @@ jobs:
         with:
           gradle-version: 8.7
 
+      # Reaproveita a MESMA chave de debug entre execuções do workflow.
+      # Sem isso, cada run gera uma chave nova e o app instalado no celular
+      # de teste passa a ser incompatível com o próximo build (erro
+      # INSTALL_FAILED_UPDATE_INCOMPATIBLE), obrigando a desinstalar toda vez.
+      - name: Cache/restore debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: autoplaygm2-debug-keystore-v1
+
       # 1) Builda primeiro o app-cobaia (test-auto-app) sozinho.
       - name: Build test-auto-app APK
         run: gradle :test-auto-app:assembleDebug

@@ -1,34 +1,40 @@
 package com.autoplaygm2.installer
 
-import android.content.pm.PackageManager
-import android.os.Build
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 /**
- * App de estudo do AutoPlayGM2: reproduz, de forma simplificada e só pra uso
- * pessoal, o truque que o AAAD usa pra fazer apps sideloaded aparecerem no
- * Android Auto — instalar o APK e depois reescrever o installerPackageName
- * dele pra "com.android.vending" (Play Store).
+ * App de estudo do AutoPlayGM2.
  *
- * Fluxo de um toque só: o APK de teste (test-auto-app) vem embutido dentro
- * dos assets/ deste app (colocado ali pelo workflow de CI antes do build).
- * Isso garante que ESTE app sempre vai ser o "installer de registro" do
- * pacote-alvo, que é o pré-requisito pra reescrever o installerPackageName
- * com sucesso.
+ * Histórico: a ideia original era reescrever o installerPackageName do
+ * pacote-alvo pra "com.android.vending" via PackageManager.setInstallerPackageName()
+ * (o truque clássico do AAAD). NA PRÁTICA, em qualquer aparelho com a Play
+ * Store de verdade instalada, o Android barra isso — o sistema exige que
+ * quem alega ser "com.android.vending" tenha o MESMO certificado de
+ * assinatura da Google, o que só a própria Google tem. É uma trava de
+ * segurança deliberada, não um bug nosso (erro típico:
+ * "Caller does not have same cert as new installer package").
+ *
+ * O caminho que realmente funciona hoje é bem mais simples: o próprio
+ * Android Auto tem um "modo desenvolvedor" oculto com um toggle
+ * "Fontes desconhecidas" que libera apps de terceiros compatíveis, sem
+ * spoof nenhum. Este app instala o APK de teste e guia pra essa
+ * configuração.
  */
 class MainActivity : AppCompatActivity() {
 
     private val tag = "AutoPlayGM2"
 
-    // Precisa bater com o applicationId do módulo test-auto-app.
-    private val targetPackage = "com.autoplaygm2.testautoapp"
-
     // Nome do arquivo dentro de installer-app/src/main/assets/
     private val embeddedApkAsset = "test_auto_app.apk"
+
+    // Pacote oficial do app Android Auto no celular.
+    private val androidAutoPackage = "com.google.android.projection.gearhead"
 
     private lateinit var statusText: TextView
 
@@ -43,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.checkInstallerButton).setOnClickListener {
-            checkInstaller()
+            openAndroidAuto()
         }
     }
 
@@ -51,48 +57,32 @@ class MainActivity : AppCompatActivity() {
         statusText.text = "Instalando..."
         ApkInstaller.installFromAssets(this, embeddedApkAsset) { success, message ->
             runOnUiThread {
-                statusText.text = message
                 Log.d(tag, message)
                 if (success) {
-                    spoofInstaller()
+                    showNextSteps()
+                } else {
+                    statusText.text = message
                 }
             }
         }
     }
 
-    private fun spoofInstaller() {
-        try {
-            // Só funciona porque ESTE app é o installer de registro do
-            // targetPackage (ver comentário da classe). É a mesma API pública
-            // que apps "atualizadores" usam legitimamente pra se anunciar
-            // como responsáveis por um pacote.
-            packageManager.setInstallerPackageName(targetPackage, "com.android.vending")
-            runOnUiThread {
-                statusText.append("\n\nPronto! Agora conecta no Android Auto do carro e vê se \"AutoPlayGM2 Test\" apareceu na lista de apps de mídia. ✅")
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "Falha ao spoofar installer", e)
-            runOnUiThread {
-                statusText.append("\n\nDeu erro nessa parte: ${e.message}")
-            }
-        }
+    private fun showNextSteps() {
+        statusText.text = "Instalado! ✅\n\n" +
+            "Agora, no app Android Auto do celular:\n" +
+            "1. Abra Configurações > Sobre.\n" +
+            "2. Toque 10x seguidas na versão do app até liberar o \"Modo desenvolvedor\".\n" +
+            "3. Volte, entre em \"Configurações de desenvolvedor\" e ative \"Fontes desconhecidas\".\n" +
+            "4. Conecte no carro e veja se \"AutoPlayGM2 Test\" aparece na lista de apps de mídia.\n\n" +
+            "Toque no botão abaixo pra abrir o Android Auto direto."
     }
 
-    private fun checkInstaller() {
-        val installer = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                packageManager.getInstallSourceInfo(targetPackage).installingPackageName
-            } else {
-                @Suppress("DEPRECATION")
-                packageManager.getInstallerPackageName(targetPackage)
-            }
-        } catch (e: PackageManager.NameNotFoundException) {
-            null
-        }
-        statusText.text = if (installer == "com.android.vending") {
-            "Tudo certo! O celular acha que este app veio da Play Store. ✅"
+    private fun openAndroidAuto() {
+        val intent = packageManager.getLaunchIntentForPackage(androidAutoPackage)
+        if (intent != null) {
+            startActivity(intent)
         } else {
-            "Ainda não. Installer atual: ${installer ?: "nenhum (app não instalado ainda)"}"
+            Toast.makeText(this, "Não encontrei o app Android Auto instalado neste celular", Toast.LENGTH_LONG).show()
         }
     }
 }
