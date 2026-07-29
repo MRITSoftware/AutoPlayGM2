@@ -33,6 +33,13 @@ desconhecidas"**. Ativar esse toggle libera apps de terceiros compatíveis
 sem precisar de nenhum spoof de installer. É documentado e usado até hoje
 pela comunidade pra apps como Fermata Auto, AA Mirror etc.
 
+**Confirmado na prática (via o botão `[Debug]` do app)**: no Desktop Head
+Unit, com "Fontes desconhecidas" ativado, o `test-auto-app` apareceu
+normalmente na lista de apps de mídia — sem nenhum spoof. E a tentativa de
+spoof, isolada, retornou exatamente o esperado:
+`SecurityException: Caller does not have same cert as new installer package
+com.android.vending`. As duas metades da teoria bateram com a realidade.
+
 ## Estrutura
 
 - **installer-app**: o app final, o único que você manda pra alguém testar.
@@ -104,6 +111,45 @@ só pra ficar mais claro pra ele.
 6. Pode apertar **"Abrir Android Auto"** no AutoPlayGM2 pra ir direto pro app.
 7. Conectar o celular no Android Auto do carro (cabo ou sem fio) e ver se
    **"AutoPlayGM2 Test"** aparece na lista de apps de mídia.
+
+## [Avançado] Tentando o spoof "de verdade" com Shizuku
+
+O motivo do `SecurityException` acima é que nosso app roda com privilégio
+normal de app comum. O shell do ADB (`adb shell`) é uma das exceções que o
+Android reconhece pra essa checagem de certificado — comandos rodados por
+ele conseguem definir o installer livremente. O
+[Shizuku](https://github.com/RikkaApps/Shizuku) é um app que expõe esse
+mesmo nível de privilégio pra outros apps, sem precisar de root completo.
+
+Isso só faz sentido testar no **seu próprio celular** (o que já tem ADB
+configurado) — não dá pra pedir isso pro seu amigo fazer, é avançado demais
+pra alguém só testando.
+
+### Setup (uma vez só)
+
+1. Baixe e instale o Shizuku pela [página oficial de releases](https://github.com/RikkaApps/Shizuku/releases)
+   (não está na Play Store).
+2. Abra o Shizuku, escolha "Iniciar via depuração sem fio" (wireless
+   debugging) — como você já tem o celular pareado e conectado via
+   `adb connect`, é só seguir a instrução que aparecer na tela do Shizuku
+   (ela mostra o comando `adb shell sh .../start.sh` específico do seu
+   aparelho). Rode esse comando no terminal do PC.
+3. O Shizuku deve mostrar "Rodando" (Running). Esse serviço para quando o
+   celular reinicia — precisa repetir o passo 2 depois de cada reboot
+   (a menos que o aparelho seja rooteado).
+
+### Testando no AutoPlayGM2
+
+1. Abra o AutoPlayGM2 e toque em **"[Avançado] Spoof via Shizuku"**.
+2. Na primeira vez, vai aparecer um popup do Shizuku pedindo permissão —
+   aceite.
+3. O app roda `pm set-installer com.autoplaygm2.testautoapp com.android.vending`
+   com o privilégio do shell, e mostra o installer antes/depois do comando.
+
+Se aparecer `Installer depois: com.android.vending`, o spoof "de verdade"
+funcionou — nesse caso o `test-auto-app` deveria aparecer no Android Auto
+mesmo **sem** o toggle "Fontes desconhecidas" ativado (dá pra desativar o
+toggle e testar de novo pra confirmar essa diferença).
 
 ## Conferir por fora (opcional, via ADB)
 

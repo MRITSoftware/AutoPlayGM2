@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import rikka.shizuku.Shizuku
 
 /**
  * App de estudo do AutoPlayGM2.
@@ -27,10 +28,10 @@ import androidx.appcompat.app.AppCompatActivity
  * spoof nenhum. Este app instala o APK de teste e guia pra essa
  * configuração.
  *
- * O botão "[Debug]" existe só pra quem quiser confirmar/explorar o
- * comportamento do spoof em outros aparelhos (ex: um Android sem a Play
- * Store genuína instalada, onde a checagem de certificado pode nem entrar
- * em ação) — não faz parte do fluxo normal recomendado.
+ * Os botões "[Debug]" e "[Avançado]" existem só pra quem quiser
+ * confirmar/explorar o comportamento do spoof — não fazem parte do fluxo
+ * normal recomendado (e o [Avançado] exige Shizuku configurado, então só
+ * faz sentido no seu próprio aparelho, não no de quem só vai testar o app).
  */
 class MainActivity : AppCompatActivity() {
 
@@ -46,6 +47,19 @@ class MainActivity : AppCompatActivity() {
     private val androidAutoPackage = "com.google.android.projection.gearhead"
 
     private lateinit var statusText: TextView
+
+    private val shizukuPermissionListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == ShizukuSpoof.REQUEST_CODE) {
+                if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                    runShizukuSpoof()
+                } else {
+                    runOnUiThread {
+                        statusText.text = "[Shizuku] Permissão negada."
+                    }
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +78,17 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.debugSpoofButton).setOnClickListener {
             debugTrySpoofAndCheck()
         }
+
+        findViewById<Button>(R.id.shizukuSpoofButton).setOnClickListener {
+            debugShizukuSpoof()
+        }
+
+        Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
+        super.onDestroy()
     }
 
     private fun installEmbeddedApk() {
@@ -100,9 +125,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Tenta o spoof clássico e mostra exatamente o que o sistema responde —
-     * sucesso, ou o erro (geralmente SecurityException por causa da checagem
-     * de certificado, se este aparelho tiver a Play Store genuína).
+     * Tenta o spoof clássico (privilégio normal do app) e mostra exatamente
+     * o que o sistema responde — sucesso, ou o erro (geralmente
+     * SecurityException por causa da checagem de certificado).
      */
     private fun debugTrySpoofAndCheck() {
         val before = readInstaller()
@@ -126,6 +151,45 @@ class MainActivity : AppCompatActivity() {
             } else {
                 "Spoof não pegou neste aparelho (esperado se ele tiver a Play Store genuína)."
             }
+    }
+
+    /**
+     * Tenta o spoof via Shizuku (privilégio de shell). Exige que o app
+     * Shizuku esteja instalado e com o serviço rodando (ver README).
+     */
+    private fun debugShizukuSpoof() {
+        if (!ShizukuSpoof.isAvailable()) {
+            statusText.text = "[Shizuku] Não encontrei o serviço do Shizuku rodando neste " +
+                "aparelho. Instale o app Shizuku e inicie o serviço antes (veja o README, " +
+                "seção Shizuku)."
+            return
+        }
+        if (!ShizukuSpoof.hasPermission()) {
+            statusText.text = "[Shizuku] Pedindo permissão..."
+            ShizukuSpoof.requestPermission()
+            return
+        }
+        runShizukuSpoof()
+    }
+
+    private fun runShizukuSpoof() {
+        statusText.text = "[Shizuku] Rodando..."
+        Thread {
+            val before = readInstaller()
+            val result = ShizukuSpoof.setInstallerViaShell(targetPackage, "com.android.vending")
+            val after = readInstaller()
+            runOnUiThread {
+                statusText.text = "[Shizuku]\n" +
+                    "Installer antes: ${before ?: "(nenhum)"}\n" +
+                    "$result\n" +
+                    "Installer depois: ${after ?: "(nenhum)"}\n\n" +
+                    if (after == "com.android.vending") {
+                        "Funcionou de verdade! ✅"
+                    } else {
+                        "Ainda não bateu."
+                    }
+            }
+        }.start()
     }
 
     private fun readInstaller(): String? {

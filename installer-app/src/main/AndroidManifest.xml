@@ -32,6 +32,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Exigido pela lib do Shizuku pra descobrir o serviço privilegiado
+             já rodando no aparelho (instalado e iniciado separadamente, fora
+             deste app — ver README). -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
     </application>
 
 </manifest>
