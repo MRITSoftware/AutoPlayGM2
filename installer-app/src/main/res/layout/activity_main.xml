@@ -35,6 +35,13 @@
         android:layout_marginTop="12dp"
         android:text="Abrir Android Auto" />
 
+    <Button
+        android:id="@+id/debugSpoofButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="[Debug] Tentar spoof + checar installer" />
+
     <TextView
         android:id="@+id/statusText"
         android:layout_width="match_parent"
