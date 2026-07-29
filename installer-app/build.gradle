@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.autoplaygm2.installer'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.autoplaygm2.installer"
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    // O APK do test-auto-app é copiado pra assets/ pelo workflow de CI antes do
+    // build. Sem isso, o AGP comprime o .apk embutido dentro do container,
+    // o que é desperdício de CPU/tamanho pra um arquivo que já é comprimido.
+    androidResources {
+        noCompress += "apk"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+}

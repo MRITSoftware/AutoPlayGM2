@@ -1,0 +1,11 @@
+.gradle/
+build/
+*/build/
+.idea/
+local.properties
+*.iml
+.DS_Store
+
+# O APK do test-auto-app é copiado pra cá automaticamente pelo workflow de
+# CI antes do build do installer-app. Não precisa (e não deve) ser commitado.
+installer-app/src/main/assets/*.apk
